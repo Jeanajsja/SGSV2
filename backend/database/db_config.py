@@ -1,25 +1,28 @@
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
 
-def get_connection():
-    # Conexión ultra-robusta diseñada para saltar:
-    # 1. Bloqueos de firewall locales en puerto 5432 (usando puerto alternativo 6543)
-    # 2. Errores de DNS locales (utilizando la IP directa de AWS-1 Pooler)
-    # 3. Fallas de enrutamiento IPv6 de tu ISP (forzando IPv4)
-    params = {
-        "host": "aws-1-us-east-2.pooler.supabase.com",
-        "hostaddr": "13.58.13.125",
-        "port": 6543,
-        "database": "postgres",
-        "user": "postgres.qgwpttpknrevnbdsjnrx",
-        "password": "Sgs_Proyecto_2026",
-        "sslmode": "require",
-        "connect_timeout": 5
-    }
-    
+# Carga las variables del archivo .env si existe localmente
+load_dotenv()
+
+def get_db_connection():
+    """
+    Fabrica de conexiones modular para el microservicio.
+    """
     try:
-        conn = psycopg2.connect(**params)
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST"),
+            hostaddr=os.getenv("DB_HOSTADDR"),
+            port=os.getenv("DB_PORT", 6543),
+            database=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            sslmode="require",
+            connect_timeout=5,
+            cursor_factory=RealDictCursor # Retorna los resultados como diccionarios listos para APIs
+        )
         return conn
     except Exception as e:
-        print(f"\n[ERROR] Connection failed completely: {e}\n")
-        return None
+        print(f"[ERROR DB] No se pudo establecer la conexión: {e}")
+        raise e
