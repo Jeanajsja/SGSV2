@@ -43,5 +43,5 @@ def index_page():
     return render_template('index.html')
 
 if __name__ == '__main__':
-    # Ejecutamos el servidor Flask en el puerto 5000 en todas las interfaces para permitir acceso desde otros dispositivos
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Ejecutamos el servidor Flask en el puerto 5555 (Monolito en Branch by Abstraction)
+    app.run(host='0.0.0.0', port=5555, debug=True)
