@@ -1,13 +1,11 @@
 import os
 
-MONOLITH_URL = os.getenv("MONOLITH_URL", "http://monolito:5000/api")
+from shared.service_catalog import MONOLITH_BASE_URL, SERVICE_CATALOG
+
+MONOLITH_URL = os.getenv("MONOLITH_URL", MONOLITH_BASE_URL)
 MICROSERVICES = {
-    "login": os.getenv("LOGIN_URL", "http://login:5001/api"),
-    "usuarios": os.getenv("USUARIOS_URL", "http://usuarios:5005/api"),
-    "roles": os.getenv("ROLES_URL", "http://roles:5004/api"),
-    "salones": os.getenv("SALONES_URL", "http://salones:5002/api"),
-    "docentes": os.getenv("DOCENTES_URL", "http://docentes:5003/api"),
-    "reservas": os.getenv("RESERVAS_URL", "http://reservas:5006/api"),
+    domain: os.getenv(f"{domain.upper()}_URL", spec.base_url)
+    for domain, spec in SERVICE_CATALOG.items()
 }
 
 
