@@ -1,35 +1,16 @@
 import os
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+
 from db_config import get_connection
 from repositories.postgres_salon_repository import PostgresSalonRepository
 from salon_controller import crear_router
 from salon_service import SalonService
-
-
-def _cors_origins():
-    raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
-    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+from shared.app_factory import create_service_app
 
 
 def create_app(service=None):
     if service is None:
         service = SalonService(PostgresSalonRepository(get_connection))
-    app = FastAPI(title="ms-salones")
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=_cors_origins(),
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    @app.get("/health")
-    def health():
-        return {"status": "ok", "service": "ms-salones"}
-
-    app.include_router(crear_router(service))
-    return app
+    return create_service_app("salones", crear_router(service), health_service_name="ms-salones")
 
 
 app = create_app()

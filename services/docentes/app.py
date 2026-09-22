@@ -1,17 +1,12 @@
 import os
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+
 from db_config import get_connection
 from docente_controller import crear_router
 from docente_service import DocenteService
 from dominio_email_validator import DominioEmailValidator
 from repositories.postgres_docente_repository import PostgresDocenteRepository
 from security.werkzeug_password_hasher import WerkzeugPasswordHasher
-
-
-def _cors_origins():
-    raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
-    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+from shared.app_factory import create_service_app
 
 
 def create_app(service=None):
@@ -21,21 +16,7 @@ def create_app(service=None):
             WerkzeugPasswordHasher(),
             DominioEmailValidator(),
         )
-    app = FastAPI(title="ms-docentes")
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=_cors_origins(),
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    @app.get("/health")
-    def health():
-        return {"status": "ok", "service": "ms-docentes"}
-
-    app.include_router(crear_router(service))
-    return app
+    return create_service_app("docentes", crear_router(service), health_service_name="ms-docentes")
 
 
 app = create_app()
