@@ -1,0 +1,57 @@
+services:
+  gateway:
+    build: ./gateway
+    container_name: sgsdev-gateway
+    ports:
+      - "8080:80"
+    depends_on:
+      - monolito
+      - login
+      - salones
+      - docentes
+      - roles
+      - usuarios
+      - reservas
+    restart: on-failure
+
+  monolito:
+    build: .
+    container_name: sgsdev-monolito
+    ports:
+      - "5000:5000"
+
+  login:
+    build: ./services/login
+    container_name: sgsdev-ms-login
+    ports:
+      - "5001:5001"
+
+  salones:
+    build: ./services/salones
+    container_name: sgsdev-ms-salones
+    ports:
+      - "5002:5002"
+
+  docentes:
+    build: ./services/docentes
+    container_name: sgsdev-ms-docentes
+    ports:
+      - "5003:5003"
+
+  roles:
+    build: ./services/roles
+    container_name: sgsdev-ms-roles
+    ports:
+      - "5004:5004"
+
+  usuarios:
+    build: ./services/usuarios
+    container_name: sgsdev-ms-usuarios
+    ports:
+      - "5005:5005"
+
+  reservas:
+    build: ./services/reservas
+    container_name: sgsdev-ms-reservas
+    ports:
+      - "5006:5006"

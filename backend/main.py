@@ -1,47 +1,44 @@
 import os
 import sys
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-# Agregar la raíz del backend al path para evitar problemas de importación
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-app = Flask(
-    __name__,
-    template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/templates')),
-    static_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend/static')),
-    static_url_path='/static'
-)
+from controllers.vista_controller import router as vista_router
+from controllers.usuario_controller import router as usuario_router
+from controllers.docente_controller import router as docente_router
+from controllers.reserva_controller import router as reserva_router
+from controllers.salon_controller import router as salon_router
+from controllers.rol_controller import router as rol_router
 
-# Configurar CORS para permitir peticiones locales
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.abspath(os.path.join(BASE_DIR, "../frontend/static"))
 
-# Importar y Registrar Controladores (Blueprints)
-from controllers.usuario_controller import usuario_bp
-from controllers.reserva_controller import reserva_bp
-from controllers.salon_controller import salon_bp
-from controllers.docente_controller import docente_bp
-from controllers.rol_controller import rol_bp
 
-app.register_blueprint(usuario_bp, url_prefix='/api')
-app.register_blueprint(reserva_bp, url_prefix='/api')
-app.register_blueprint(salon_bp, url_prefix='/api')
-app.register_blueprint(docente_bp, url_prefix='/api')
-app.register_blueprint(rol_bp, url_prefix='/api')
+def create_app() -> FastAPI:
+    application = FastAPI(title="SGSDev", description="Sistema de Gestión de Salones")
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    application.include_router(vista_router)
+    application.include_router(usuario_router)
+    application.include_router(docente_router)
+    application.include_router(reserva_router)
+    application.include_router(salon_router)
+    application.include_router(rol_router)
+    application.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    return application
 
-# --- SERVICIO DE PÁGINAS FRONTEND ---
-@app.route('/')
-def home():
-    return render_template('login.html')
 
-@app.route('/login.html')
-def login_page():
-    return render_template('login.html')
+app = create_app()
 
-@app.route('/index.html')
-def index_page():
-    return render_template('index.html')
+if __name__ == "__main__":
+    import uvicorn
 
-if __name__ == '__main__':
-    # Ejecutamos el servidor Flask en el puerto 5555 (Monolito en Branch by Abstraction)
-    app.run(host='0.0.0.0', port=5555, debug=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=5000, reload=True)
+

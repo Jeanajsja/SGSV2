@@ -1,20 +1,25 @@
-from flask import Blueprint, request, jsonify
+from fastapi import APIRouter, Depends
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
+from dependencies import get_login_service, get_usuario_service
+from schemas import LoginRequest, UsuarioCreate
+from services.login_service import LoginService
 from services.usuario_service import UsuarioService
 
-usuario_bp = Blueprint('usuario', __name__)
-service = UsuarioService()
+router = APIRouter(prefix="/api", tags=["usuarios"])
 
-@usuario_bp.route('/login', methods=['POST'])
-def login():
-    res = service.login(request.json.get('email'), request.json.get('password'))
-    if res and res.get('status') == 'ok':
-        return jsonify(res)
-    return jsonify(res), 401
 
-@usuario_bp.route('/usuarios', methods=['POST'])
-def registrar():
-    data = request.json
-    res = service.crear_usuario(data)
-    if res and res.get('status') == 'ok':
-        return jsonify(res)
-    return jsonify(res), 400
+@router.post("/login")
+def login(payload: LoginRequest, service: LoginService = Depends(get_login_service)):
+    res = service.login(payload.email, payload.password)
+    if res and res.get("status") == "ok":
+        return jsonable_encoder(res)
+    return JSONResponse(content=jsonable_encoder(res), status_code=401)
+
+
+@router.post("/usuarios")
+def registrar(payload: UsuarioCreate, service: UsuarioService = Depends(get_usuario_service)):
+    res = service.crear_usuario(payload.model_dump())
+    if res and res.get("status") == "ok":
+        return res
+    return JSONResponse(content=res, status_code=400)
