@@ -1,0 +1,4 @@
+SUPERADMIN_ANCLA = "lfpaez30@ucatolica.edu.co"
+SUPERADMIN_CLAVE = "123"
+SUPERADMIN_NOMBRE = "Luisa Fernanda Paez"
+ROL_SUPERADMIN = 1
