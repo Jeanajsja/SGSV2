@@ -19,55 +19,88 @@ services:
   monolito:
     build: .
     container_name: sgsdev-monolito
+    env_file:
+      - ./backend/database/.env
     environment:
       CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DB_SSLMODE: "require"
     ports:
       - "5000:5000"
 
   login:
-    build: ./services/login
+    build:
+      context: .
+      dockerfile: ./services/login/Dockerfile
     container_name: sgsdev-ms-login
+    env_file:
+      - ./backend/database/.env
     environment:
       CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DB_SSLMODE: "require"
     ports:
       - "5001:5001"
 
   salones:
-    build: ./services/salones
+    build:
+      context: .
+      dockerfile: ./services/salones/Dockerfile
     container_name: sgsdev-ms-salones
+    env_file:
+      - ./backend/database/.env
     environment:
       CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DB_SSLMODE: "require"
     ports:
       - "5002:5002"
 
   docentes:
-    build: ./services/docentes
+    build:
+      context: .
+      dockerfile: ./services/docentes/Dockerfile
     container_name: sgsdev-ms-docentes
+    env_file:
+      - ./backend/database/.env
     environment:
       CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DB_SSLMODE: "require"
     ports:
       - "5003:5003"
 
   roles:
-    build: ./services/roles
+    build:
+      context: .
+      dockerfile: ./services/roles/Dockerfile
     container_name: sgsdev-ms-roles
+    env_file:
+      - ./backend/database/.env
     environment:
       CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DB_SSLMODE: "require"
     ports:
       - "5004:5004"
 
   usuarios:
-    build: ./services/usuarios
+    build:
+      context: .
+      dockerfile: ./services/usuarios/Dockerfile
     container_name: sgsdev-ms-usuarios
+    env_file:
+      - ./backend/database/.env
     environment:
       CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DB_SSLMODE: "require"
     ports:
       - "5005:5005"
 
   reservas:
-    build: ./services/reservas
+    build:
+      context: .
+      dockerfile: ./services/reservas/Dockerfile
     container_name: sgsdev-ms-reservas
+    env_file:
+      - ./backend/database/.env
     environment:
       CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
+      DB_SSLMODE: "require"
     ports:
       - "5006:5006"
