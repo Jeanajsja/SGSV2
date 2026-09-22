@@ -1,79 +1,110 @@
-from database.db_config import get_connection
-from psycopg2.extras import RealDictCursor
-from werkzeug.security import generate_password_hash, check_password_hash # Para seguridad
+from interfaces.email_validator import IEmailValidator
+from interfaces.password_hasher import IPasswordHasher
+from interfaces.usuario_repository import IUsuarioRepository
+
+SUPERADMIN_ANCLA = "lfpaez30@ucatolica.edu.co"
+ROL_SUPERADMIN = 1
+ROLES_VALIDOS = {1, 2, 3}
+
 
 class UsuarioService:
-    # Tarea 8 y 9: Registrar usuarios (Admin, Operador, Docente)
+    def __init__(self, repository: IUsuarioRepository, password_hasher: IPasswordHasher, email_validator: IEmailValidator):
+        self._repository = repository
+        self._password_hasher = password_hasher
+        self._email_validator = email_validator
+
     def crear_usuario(self, data):
-        conn = get_connection()
-        if not conn: return {"status": "error", "message": "Error de conexión"}
-        
-        email = data.get('email', '').lower()
-        if '@' in email:
-            dominio_completo = email.split('@')[-1]
-            dominio_base = dominio_completo.split('.')[0]
-            
-            typos_base = {
-                'gmal': 'gmail', 'gmai': 'gmail', 'gamil': 'gmail', 'gmaill': 'gmail',
-                'hotml': 'hotmail', 'hotmal': 'hotmail', 'hormail': 'hotmail', 'homail': 'hotmail',
-                'outlok': 'outlook', 'outloo': 'outlook', 'oulook': 'outlook',
-                'yaho': 'yahoo', 'yahhoo': 'yahoo'
-            }
-            
-            if dominio_base in typos_base:
-                correccion = dominio_completo.replace(dominio_base, typos_base[dominio_base], 1)
-                return {"status": "error", "message": f"Dominio de correo inválido. ¿Quisiste escribir @{correccion}?"}
-            
-            if dominio_completo.endswith(('.con', '.c', '.om', '.o')):
-                correccion = dominio_completo.rsplit('.', 1)[0] + '.com'
-                return {"status": "error", "message": f"Dominio de correo inválido. ¿Quisiste escribir @{correccion}?"}
-        
+        error = self._email_validator.validar(data.get("email", ""))
+        if error:
+            return error
         try:
-            cursor = conn.cursor()
-            # Encriptamos la contraseña antes de guardarla
-            password_segura = generate_password_hash(data['password'])
-            
-            query = """
-                INSERT INTO usuario (nombre, email, password, id_rol) 
-                VALUES (%s, %s, %s, %s)
-            """
-            cursor.execute(query, (data['nombre'], data['email'], password_segura, data['id_rol']))
-            conn.commit()
-            conn.close()
-            return {"status": "ok", "message": "Cuenta creada exitosamente"}
+            id_rol = int(data["id_rol"])
+        except (TypeError, ValueError):
+            return {"status": "error", "message": "El rol no es válido"}
+        if id_rol == ROL_SUPERADMIN:
+            solicitante = (data.get("solicitante_email") or "").lower()
+            if solicitante != SUPERADMIN_ANCLA:
+                return {
+                    "status": "error",
+                    "message": "Solo el superadministrador ancla puede crear otro superadministrador",
+                }
+        try:
+            password_segura = self._password_hasher.hash(data["password"])
+            self._repository.crear(data["nombre"], data["email"], password_segura, id_rol)
+        except ConnectionError:
+            return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
-            if conn: conn.close()
             return {"status": "error", "message": f"El correo ya existe o hay un error: {str(e)}"}
-    def login(self, email, password):
-        conn = get_connection()
-        
-        if conn is None:
-            return {"status": "error", "message": "No se pudo conectar a la base de datos de Supabase"}
-        
+        return {"status": "ok", "message": "Cuenta creada exitosamente"}
+
+    def listar_usuarios(self):
         try:
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute("SELECT * FROM usuario WHERE email = %s", (email,))
-            user = cursor.fetchone()
-            conn.close()
-            
-            if user:
-                # Verificación híbrida: soporta texto plano y hash seguro de werkzeug
-                valido = False
-                if user['password'] == password:
-                    valido = True
-                else:
-                    try:
-                        valido = check_password_hash(user['password'], password)
-                    except Exception:
-                        valido = False
-                
-                if valido:
-                    # Limpiar password para no exponerlo en el frontend
-                    user_clean = dict(user)
-                    user_clean.pop('password', None)
-                    return {"status": "ok", "user": user_clean}
-            
-            return {"status": "error", "message": "Credenciales inválidas"}
+            return {"status": "ok", "data": [self._publico(u) for u in self._repository.listar()]}
+        except ConnectionError:
+            return {"status": "error", "message": "Error de conexión", "data": []}
+
+    def cambiar_rol(self, id_usuario, id_rol, solicitante_email):
+        solicitante = self._exigir_superadmin(solicitante_email)
+        if isinstance(solicitante, dict) and solicitante.get("status") == "error":
+            return solicitante
+        try:
+            nuevo_rol = int(id_rol)
+        except (TypeError, ValueError):
+            return {"status": "error", "message": "El rol no es válido"}
+        if nuevo_rol not in ROLES_VALIDOS:
+            return {"status": "error", "message": "El rol no es válido"}
+        objetivo = self._repository.buscar_por_id(id_usuario)
+        if not objetivo:
+            return {"status": "error", "message": "La cuenta no existe"}
+        if self._es_ancla(objetivo):
+            return {"status": "error", "message": "El superadministrador ancla no se puede modificar"}
+        if nuevo_rol == ROL_SUPERADMIN and not self._es_ancla(solicitante):
+            return {
+                "status": "error",
+                "message": "Solo el superadministrador ancla puede asignar el rol de superadministrador",
+            }
+        try:
+            self._repository.actualizar_rol(id_usuario, nuevo_rol)
+        except ConnectionError:
+            return {"status": "error", "message": "Error de conexión"}
         except Exception as e:
-            if conn: conn.close()
-            return {"status": "error", "message": f"Error en el servidor: {str(e)}"}
+            return {"status": "error", "message": f"No se pudo cambiar el rol: {str(e)}"}
+        return {"status": "ok", "message": "Rol actualizado"}
+
+    def eliminar_cuenta(self, id_usuario, solicitante_email):
+        solicitante = self._exigir_superadmin(solicitante_email)
+        if isinstance(solicitante, dict) and solicitante.get("status") == "error":
+            return solicitante
+        objetivo = self._repository.buscar_por_id(id_usuario)
+        if not objetivo:
+            return {"status": "error", "message": "La cuenta no existe"}
+        if self._es_ancla(objetivo):
+            return {"status": "error", "message": "El superadministrador ancla no se puede eliminar"}
+        if (objetivo.get("email") or "").lower() == (solicitante.get("email") or "").lower():
+            return {"status": "error", "message": "No puedes eliminar tu propia cuenta"}
+        try:
+            self._repository.eliminar(id_usuario)
+        except ConnectionError:
+            return {"status": "error", "message": "Error de conexión"}
+        except Exception as e:
+            return {"status": "error", "message": f"No se pudo eliminar la cuenta: {str(e)}"}
+        return {"status": "ok", "message": "Cuenta eliminada"}
+
+    def _exigir_superadmin(self, email):
+        if not email:
+            return {"status": "error", "message": "Solo un superadministrador puede gestionar cuentas"}
+        solicitante = self._repository.buscar_por_email(email)
+        if not solicitante or int(solicitante.get("id_rol") or 0) != ROL_SUPERADMIN:
+            return {"status": "error", "message": "Solo un superadministrador puede gestionar cuentas"}
+        return solicitante
+
+    def _es_ancla(self, usuario):
+        return (usuario.get("email") or "").lower() == SUPERADMIN_ANCLA
+
+    def _publico(self, usuario):
+        return {
+            "id_usuario": usuario["id_usuario"],
+            "nombre": usuario["nombre"],
+            "email": usuario["email"],
+            "id_rol": usuario["id_rol"],
+        }

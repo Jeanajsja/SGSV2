@@ -1,25 +1,51 @@
+import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
 def get_connection():
-    # Conexión ultra-robusta diseñada para saltar:
-    # 1. Bloqueos de firewall locales en puerto 5432 (usando puerto alternativo 6543)
-    # 2. Errores de DNS locales (utilizando la IP directa de AWS-1 Pooler)
-    # 3. Fallas de enrutamiento IPv6 de tu ISP (forzando IPv4)
-    params = {
-        "host": "aws-1-us-east-2.pooler.supabase.com",
-        "hostaddr": "13.58.13.125",
-        "port": 6543,
-        "database": "postgres",
-        "user": "postgres.qgwpttpknrevnbdsjnrx",
-        "password": "Sgs_Proyecto_2026",
-        "sslmode": "require",
-        "connect_timeout": 5
-    }
-    
+    # 1. Si existe DATABASE_URL en las variables de entorno (ej. en Render)
+    database_url = os.environ.get("DATABASE_URL")
+    if database_url:
+        try:
+            return psycopg2.connect(database_url, sslmode="require", connect_timeout=10)
+        except Exception as e:
+            print(f"[WARN] Connection using DATABASE_URL failed: {e}")
+
+    host = os.environ.get("DB_HOST", "aws-1-us-east-2.pooler.supabase.com")
+    port = int(os.environ.get("DB_PORT", "6543"))
+    database = os.environ.get("DB_NAME", "postgres")
+    user = os.environ.get("DB_USER", "postgres.qgwpttpknrevnbdsjnrx")
+    password = os.environ.get("DB_PASSWORD", "Sgs_Proyecto_2026")
+    hostaddr = os.environ.get("DB_HOSTADDR", "13.58.13.125")
+
+    # 2. Intento estándar por nombre de host (recomendado en Render y entornos de nube)
     try:
-        conn = psycopg2.connect(**params)
+        conn = psycopg2.connect(
+            host=host,
+            port=port,
+            database=database,
+            user=user,
+            password=password,
+            sslmode="require",
+            connect_timeout=10
+        )
         return conn
-    except Exception as e:
-        print(f"\n[ERROR] Connection failed completely: {e}\n")
+    except Exception as e1:
+        print(f"[WARN] Connection via hostname ({host}) failed: {e1}")
+
+    # 3. Intento secundario con IP fija (para resolver bloqueos de DNS locales)
+    try:
+        conn = psycopg2.connect(
+            host=host,
+            hostaddr=hostaddr,
+            port=port,
+            database=database,
+            user=user,
+            password=password,
+            sslmode="require",
+            connect_timeout=10
+        )
+        return conn
+    except Exception as e2:
+        print(f"[ERROR] Connection failed completely: {e2}")
         return None

@@ -1,14 +1,22 @@
-from database.db_config import get_connection
-from psycopg2.extras import RealDictCursor
+from interfaces.rol_repository import IRolRepository
+from models.rol import Rol
+
+NOMBRES_ROL = {
+    1: "Superadministrador",
+    2: "Administrador",
+    3: "Docente",
+}
+
 
 class RolService:
-    # Cambiamos 'obtener_roles' por 'listar' para que el controlador lo encuentre
-    def listar(self): 
-        conn = get_connection()
-        if conn is None: return []
-        
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT * FROM Rol")
-        res = cursor.fetchall()
-        conn.close()
-        return res
+    def __init__(self, repository: IRolRepository):
+        self._repository = repository
+
+    def listar(self):
+        roles = []
+        for row in self._repository.listar():
+            data = Rol.from_row(row).to_dict()
+            if data["id_rol"] in NOMBRES_ROL:
+                data["nombre"] = NOMBRES_ROL[data["id_rol"]]
+            roles.append(data)
+        return roles

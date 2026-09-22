@@ -1,4 +1,16 @@
-/* Animaciones y ajustes del Sidebar */
+:root {
+    --ucc-navy: #071833;
+    --ucc-navy-2: #0c274f;
+    --ucc-azul: #0e4a8a;
+    --ucc-azul-medio: #1a66b8;
+    --ucc-dorado: #edb309;
+    --ucc-oro: #e8c547;
+    --ucc-blanco: #ffffff;
+    --ucc-plata: #f4f7fb;
+    --ucc-texto: #12213a;
+    --ucc-muted: #5c6b80;
+}
+
 .sidebar-item {
     transition: all 0.2s ease-in-out;
 }
@@ -9,10 +21,9 @@
 
 .card-hover:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 20px rgba(7, 24, 51, 0.12);
 }
 
-/* Personalización para gráficos */
 canvas#reservasChart {
     max-height: 250px;
 }
