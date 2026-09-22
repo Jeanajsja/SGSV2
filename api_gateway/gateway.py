@@ -3,17 +3,10 @@ import os
 import requests
 from flask import Flask, Response, request
 
+from shared.service_registry import MONOLITH_URL, resolve_target_base_url
+
 app = Flask(__name__)
 
-MONOLITH_URL = os.getenv("MONOLITH_URL", "http://monolito:5000/api")
-MICROSERVICES = {
-    "login": os.getenv("LOGIN_URL", "http://login:5001/api"),
-    "usuarios": os.getenv("USUARIOS_URL", "http://usuarios:5005/api"),
-    "roles": os.getenv("ROLES_URL", "http://roles:5004/api"),
-    "salones": os.getenv("SALONES_URL", "http://salones:5002/api"),
-    "docentes": os.getenv("DOCENTES_URL", "http://docentes:5003/api"),
-    "reservas": os.getenv("RESERVAS_URL", "http://reservas:5006/api"),
-}
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080").split(",") if origin.strip()]
 
 
@@ -36,11 +29,7 @@ def proxy(path):
     if request.method == 'OPTIONS':
         return Response(status=204)
 
-    domain = path.split('/')[0]
-    if domain in ['login', 'usuarios', 'roles', 'salones', 'docentes', 'reservas']:
-        target_base_url = MICROSERVICES.get(domain)
-    else:
-        target_base_url = MONOLITH_URL
+    target_base_url = resolve_target_base_url(path)
 
     if not target_base_url:
         return {"error": "Servicio no encontrado"}, 404
