@@ -9,6 +9,11 @@ from repositories.postgres_docente_repository import PostgresDocenteRepository
 from security.werkzeug_password_hasher import WerkzeugPasswordHasher
 
 
+def _cors_origins():
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 def create_app(service=None):
     if service is None:
         service = DocenteService(
@@ -17,7 +22,13 @@ def create_app(service=None):
             DominioEmailValidator(),
         )
     app = FastAPI(title="ms-docentes")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health")
     def health():

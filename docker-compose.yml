@@ -2,6 +2,8 @@ services:
   gateway:
     build: ./gateway
     container_name: sgsdev-gateway
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "8080:80"
     depends_on:
@@ -17,41 +19,55 @@ services:
   monolito:
     build: .
     container_name: sgsdev-monolito
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "5000:5000"
 
   login:
     build: ./services/login
     container_name: sgsdev-ms-login
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "5001:5001"
 
   salones:
     build: ./services/salones
     container_name: sgsdev-ms-salones
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "5002:5002"
 
   docentes:
     build: ./services/docentes
     container_name: sgsdev-ms-docentes
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "5003:5003"
 
   roles:
     build: ./services/roles
     container_name: sgsdev-ms-roles
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "5004:5004"
 
   usuarios:
     build: ./services/usuarios
     container_name: sgsdev-ms-usuarios
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "5005:5005"
 
   reservas:
     build: ./services/reservas
     container_name: sgsdev-ms-reservas
+    environment:
+      CORS_ALLOWED_ORIGINS: "http://localhost:8080,http://127.0.0.1:8080"
     ports:
       - "5006:5006"

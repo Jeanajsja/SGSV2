@@ -9,6 +9,11 @@ from security.werkzeug_password_hasher import WerkzeugPasswordHasher
 from seed_superadmin import asegurar_superadmin
 
 
+def _cors_origins():
+    raw = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080")
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 def create_app(service=None):
     asegurar_superadmin(get_connection)
     if service is None:
@@ -17,7 +22,8 @@ def create_app(service=None):
     app = FastAPI(title="ms-login")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=_cors_origins(),
+        allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
     )
