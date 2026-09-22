@@ -1,8 +1,8 @@
 import os
 
-import requests
 from flask import Flask, Response, request
 
+from shared.service_client import ServiceClient
 from shared.service_registry import MONOLITH_URL, resolve_target_base_url
 
 app = Flask(__name__)
@@ -34,20 +34,13 @@ def proxy(path):
     if not target_base_url:
         return {"error": "Servicio no encontrado"}, 404
 
-    url = f"{target_base_url}/{path}"
+    domain = path.split('/')[0]
+    client = ServiceClient(domain, timeout=10) if domain in {"login", "usuarios", "roles", "salones", "docentes", "reservas"} else ServiceClient("monolith", timeout=10)
     try:
-        resp = requests.request(
-            method=request.method,
-            url=url,
-            headers={key: value for (key, value) in request.headers if key.lower() not in {"host", "content-length"}},
-            data=request.get_data(),
-            cookies=request.cookies,
-            allow_redirects=False,
-            timeout=10,
-        )
+        resp = client.proxy_request(request, path=path)
         return Response(resp.content, resp.status_code, resp.headers.items())
-    except requests.exceptions.RequestException as exc:
-        return {"error": f"No se pudo conectar al servicio en {url}: {exc}"}, 503
+    except Exception as exc:
+        return {"error": f"No se pudo conectar al servicio en {target_base_url}: {exc}"}, 503
 
 
 if __name__ == '__main__':
