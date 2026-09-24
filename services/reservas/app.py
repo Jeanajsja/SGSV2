@@ -1,24 +1,16 @@
 import os
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+
 from db_config import get_connection
 from repositories.postgres_reserva_repository import PostgresReservaRepository
 from reserva_controller import crear_router
 from reserva_service import ReservaService
+from shared.app_factory import create_service_app
 
 
 def create_app(service=None):
     if service is None:
         service = ReservaService(PostgresReservaRepository(get_connection))
-    app = FastAPI(title="ms-reservas")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-    @app.get("/health")
-    def health():
-        return {"status": "ok", "service": "ms-reservas"}
-
-    app.include_router(crear_router(service))
-    return app
+    return create_service_app("reservas", crear_router(service), health_service_name="ms-reservas")
 
 
 app = create_app()

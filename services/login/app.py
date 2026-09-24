@@ -1,12 +1,12 @@
 import os
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+
 from db_config import get_connection
 from login_controller import crear_router
 from login_service import LoginService
 from repositories.postgres_login_repository import PostgresLoginRepository
 from security.werkzeug_password_hasher import WerkzeugPasswordHasher
 from seed_superadmin import asegurar_superadmin
+from shared.app_factory import create_service_app
 
 
 def create_app(service=None):
@@ -14,20 +14,7 @@ def create_app(service=None):
     if service is None:
         service = LoginService(PostgresLoginRepository(get_connection), WerkzeugPasswordHasher())
 
-    app = FastAPI(title="ms-login")
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    @app.get("/health")
-    def health():
-        return {"status": "ok", "service": "ms-login"}
-
-    app.include_router(crear_router(service))
-    return app
+    return create_service_app("login", crear_router(service), health_service_name="ms-login")
 
 
 app = create_app()

@@ -11,17 +11,29 @@ class DocenteService:
         self._email_validator = email_validator
 
     def listar(self):
-        return [Docente.from_row(row).to_dict() for row in self._repository.listar()]
+        try:
+            return [Docente.from_row(row).to_dict() for row in self._repository.listar()]
+        except ConnectionError:
+            return []
 
     def crear(self, data):
-        error = self._email_validator.validar(data.get("correo", ""))
+        if not data:
+            return {"status": "error", "message": "Datos del docente requeridos"}
+
+        nombre = str(data.get("nombre", "")).strip()
+        correo = str(data.get("correo", "")).strip()
+        if not nombre or not correo:
+            return {"status": "error", "message": "Los campos 'nombre' y 'correo' son obligatorios."}
+
+        error = self._email_validator.validar(correo)
         if error:
             return error
+
         try:
             password_defecto = self._password_hasher.hash("docente123")
-            self._repository.crear(data["nombre"], data["correo"], password_defecto)
+            self._repository.crear(nombre, correo, password_defecto)
         except ConnectionError:
             return {"status": "error", "message": "Error de conexión"}
-        except Exception as e:
-            return {"status": "error", "message": f"Error al registrar docente: {str(e)}"}
+        except Exception as exc:
+            return {"status": "error", "message": f"Error al registrar docente: {str(exc)}"}
         return {"status": "ok", "message": "Docente registrado con éxito. Contraseña por defecto: docente123"}
