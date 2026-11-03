@@ -1,8 +1,15 @@
-const API_URL = window.location.origin + "/api";
+import { API_URL, ROLES } from './config.js';
+import { verificarAutenticacion, aplicarControlRoles, cerrarSesion } from './auth.js';
+import { initChart } from './charts.js';
+
 let seccionActual = 'dashboard';
-let chartInstance = null;
+let usuarioActual = null;
 
 document.addEventListener('DOMContentLoaded', () => {
+<<<<<<< HEAD:frontend/static/js/app.js
+    usuarioActual = verificarAutenticacion();
+    if (!usuarioActual) return;
+=======
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (!user) { window.location.href = 'login.html'; return; }
 
@@ -20,45 +27,54 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (rol === 2) { // OPERATIVO: No ve Control de Roles
         const el = document.getElementById('nav-roles'); if(el) el.style.display = 'none';
     }
+>>>>>>> origin/main:frontend/static/js/dashboard.js
 
+    aplicarControlRoles(usuarioActual);
     mostrarSeccion('dashboard');
+
+    // Exponer funciones globales necesarias para eventos inline en el HTML (onclick)
+    window.mostrarSeccion = mostrarSeccion;
+    window.cerrarModal = cerrarModal;
+    window.cerrarSesion = cerrarSesion;
+    window.recargarSeccionActual = recargarSeccionActual;
+    window.editarSalon = editarSalon;
+    window.editarReserva = editarReserva;
+    window.cancelarReserva = cancelarReserva;
 });
 
-async function mostrarSeccion(seccion) {
+export async function mostrarSeccion(seccion) {
     seccionActual = seccion;
-    const user = JSON.parse(sessionStorage.getItem('user'));
     const btn = document.getElementById('btn-accion-principal');
     const tit = document.getElementById('titulo-seccion');
 
     document.querySelectorAll('.sidebar-item').forEach(el => el.classList.remove('sidebar-active'));
     
-    // Asignar sidebar active según corresponda
     let sideId = 'nav-' + seccion.split('_')[0];
     document.getElementById(sideId)?.classList.add('sidebar-active');
 
     btn.style.display = 'flex';
     
     if (seccion === 'dashboard') {
-        tit.innerText = user.id_rol == 3 ? "Mis Reservas" : "Dashboard General";
+        tit.innerText = usuarioActual.id_rol == ROLES.DOCENTE ? "Mis Reservas" : "Dashboard General";
         btn.innerHTML = '<i class="fas fa-plus"></i> NUEVA RESERVA';
         btn.onclick = () => prepararModal('reserva');
         await cargarTabla('reservas');
-        initChart();
+        initChart(usuarioActual);
     } else if (seccion === 'salones') {
         tit.innerText = "Gestión de Salones";
         btn.innerHTML = '<i class="fas fa-plus"></i> REGISTRAR SALÓN';
         btn.onclick = () => prepararModal('salon');
-        if (user.id_rol != 1) btn.style.display = 'none'; // US-05: Solo admin puede registrar
+        if (usuarioActual.id_rol != ROLES.ADMINISTRADOR) btn.style.display = 'none';
         await cargarTabla('salones');
     } else if (seccion === 'reservas_globales') {
         tit.innerText = "Reservas Globales";
-        btn.style.display = 'none'; // No se crean desde este panel global
+        btn.style.display = 'none';
         await cargarTabla('reservas_globales');
     } else if (seccion === 'docentes') {
         tit.innerText = "Listado de Docentes";
         btn.innerHTML = '<i class="fas fa-plus"></i> REGISTRAR DOCENTE';
         btn.onclick = () => prepararModal('docente');
-        if (user.id_rol != 1) btn.style.display = 'none'; // US-13: Solo admin
+        if (usuarioActual.id_rol != ROLES.ADMINISTRADOR) btn.style.display = 'none';
         await cargarTabla('docentes');
     } else if (seccion === 'roles') {
         tit.innerText = "Control de Roles";
@@ -74,7 +90,6 @@ async function mostrarSeccion(seccion) {
 }
 
 async function cargarTabla(tipo) {
-    const user = JSON.parse(sessionStorage.getItem('user'));
     const head = document.getElementById('tabla-head');
     const body = document.getElementById('tabla-body');
     body.innerHTML = "<tr><td colspan='5' class='p-10 text-center text-slate-400 italic'>Sincronizando con Supabase...</td></tr>";
@@ -96,9 +111,8 @@ async function cargarTabla(tipo) {
             head.innerHTML = '<tr><th class="px-6 py-4">Docente</th><th class="px-6 py-4">Salón</th><th class="px-6 py-4">Fecha</th><th class="px-6 py-4">Horario</th><th class="px-6 py-4">Acción</th></tr>';
             
             let data = result.data || [];
-            // Si es vista del docente, filtrar únicamente sus reservas
-            if (tipo === 'reservas' && user.id_rol == 3) {
-                data = data.filter(r => r.id_docente == user.id_usuario);
+            if (tipo === 'reservas' && usuarioActual.id_rol == ROLES.DOCENTE) {
+                data = data.filter(r => r.id_docente == usuarioActual.id_usuario);
             }
 
             if (data.length === 0) {
@@ -108,9 +122,14 @@ async function cargarTabla(tipo) {
                     const h_ini = r.hora_inicio ? r.hora_inicio.substring(0,5) : '--:--';
                     const h_fin = r.hora_fin ? r.hora_fin.substring(0,5) : '--:--';
                     
+<<<<<<< HEAD:frontend/static/js/app.js
+                    const canEdit = usuarioActual.id_rol == ROLES.ADMINISTRADOR || usuarioActual.id_rol == ROLES.OPERATIVO;
+                    const btnEditar = canEdit ? `<button onclick="editarReserva(${r.id_reserva}, '${r.fecha}', '${h_ini}', '${h_fin}', ${r.id_salon}, ${r.id_docente})" class="text-blue-600 font-bold hover:underline mr-4"><i class="fas fa-edit"></i></button>` : '';
+=======
                     // Botón editar condicional (Administrador o Administrativo)
                     const canEdit = user.id_rol == 1 || user.id_rol == 2;
                     const btnEditar = canEdit ? `<button onclick="editarReserva(${r.id_reserva}, '${r.fecha}', '${h_ini}', '${h_fin}', ${r.id_salon}, ${r.id_docente})" class="text-ucc-azul font-bold hover:underline mr-4"><i class="fas fa-edit"></i></button>` : '';
+>>>>>>> origin/main:frontend/static/js/dashboard.js
 
                     body.innerHTML += `
                         <tr class="border-b hover:bg-slate-50/50 transition">
@@ -126,7 +145,8 @@ async function cargarTabla(tipo) {
                 });
             }
             if (tipo === 'reservas') {
-                document.getElementById('stat-reservas').innerText = data.length;
+                const statElem = document.getElementById('stat-reservas');
+                if (statElem) statElem.innerText = data.length;
             }
         } else if (tipo === 'salones') {
             head.innerHTML = '<tr><th class="px-6 py-4">Nombre</th><th class="px-6 py-4">Capacidad</th><th class="px-6 py-4">Ubicación</th><th class="px-6 py-4">Estado</th><th class="px-6 py-4">Acción</th></tr>';
@@ -142,7 +162,11 @@ async function cargarTabla(tipo) {
                             <td class="px-6 py-4 text-slate-600">${s.capacidad} personas</td>
                             <td class="px-6 py-4 text-slate-600">${s.ubicacion}</td>
                             <td class="px-6 py-4"><span class="${badgeColor} px-2.5 py-1 rounded-lg text-xs font-bold uppercase">${s.estado}</span></td>
+<<<<<<< HEAD:frontend/static/js/app.js
+                            <td class="px-6 py-4">${usuarioActual.id_rol == ROLES.ADMINISTRADOR ? `<button onclick="editarSalon(${s.id_salon}, '${s.nombre}', ${s.capacidad}, '${s.ubicacion}')" class="text-blue-600 font-bold hover:underline"><i class="fas fa-edit"></i> Editar</button>` : '-'}</td>
+=======
                             <td class="px-6 py-4">${user.id_rol == 1 ? `<button onclick="editarSalon(${s.id_salon}, '${s.nombre}', ${s.capacidad}, '${s.ubicacion}')" class="text-ucc-azul font-bold hover:underline"><i class="fas fa-edit"></i> Editar</button>` : '-'}</td>
+>>>>>>> origin/main:frontend/static/js/dashboard.js
                         </tr>`;
                 });
             }
@@ -199,7 +223,6 @@ async function cargarTabla(tipo) {
 }
 
 function prepararModal(tipo, editData = null) {
-    const user = JSON.parse(sessionStorage.getItem('user'));
     const campos = document.getElementById('campos-dinamicos');
     campos.innerHTML = "";
 
@@ -225,7 +248,7 @@ function prepararModal(tipo, editData = null) {
                 <label class="text-xs font-bold text-slate-400 uppercase">ID del Salón</label>
                 <input type="number" id="m-salon" placeholder="ID del Salón" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.id_salon : ''}">
             </div>
-            ${user.id_rol != 3 ? `
+            ${usuarioActual.id_rol != ROLES.DOCENTE ? `
             <div class="space-y-1">
                 <label class="text-xs font-bold text-slate-400 uppercase">ID del Docente</label>
                 <input type="number" id="m-docente" placeholder="ID del Docente" class="w-full p-3 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-ucc-dorado transition" required value="${editData ? editData.id_docente : ''}">
@@ -381,13 +404,12 @@ function editarReserva(id_reserva, fecha, hora_inicio, hora_fin, id_salon, id_do
 
 async function enviarFormulario(e, tipo) {
     e.preventDefault();
-    const user = JSON.parse(sessionStorage.getItem('user'));
     let data = {};
     let endpoint = `${API_URL}/${tipo}s`;
     let method = 'POST';
     
-    if (tipo === 'reserva') {
-        const id_docente_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-docente').value;
+    if (tipo === 'reserva' || tipo === 'editar_reserva') {
+        const id_docente_val = usuarioActual.id_rol == ROLES.DOCENTE ? usuarioActual.id_usuario : document.getElementById('m-docente').value;
         data = { 
             fecha: document.getElementById('m-fecha').value, 
             hora_inicio: document.getElementById('m-inicio').value, 
@@ -395,18 +417,11 @@ async function enviarFormulario(e, tipo) {
             id_salon: parseInt(document.getElementById('m-salon').value), 
             id_docente: parseInt(id_docente_val)
         };
-    } else if (tipo === 'editar_reserva') {
-        const id_reserva = document.getElementById('m-reserva-id').value;
-        const id_docente_val = user.id_rol == 3 ? user.id_usuario : document.getElementById('m-docente').value;
-        data = { 
-            fecha: document.getElementById('m-fecha').value, 
-            hora_inicio: document.getElementById('m-inicio').value, 
-            hora_fin: document.getElementById('m-fin').value,
-            id_salon: parseInt(document.getElementById('m-salon').value), 
-            id_docente: parseInt(id_docente_val)
-        };
-        endpoint = `${API_URL}/reservas/${id_reserva}`;
-        method = 'PUT';
+        if (tipo === 'editar_reserva') {
+            const id_reserva = document.getElementById('m-reserva-id').value;
+            endpoint = `${API_URL}/reservas/${id_reserva}`;
+            method = 'PUT';
+        }
     } else if (tipo === 'salon') {
         data = { 
             nombre: document.getElementById('m-nom').value, 
@@ -455,11 +470,9 @@ async function enviarFormulario(e, tipo) {
 }
 
 async function cancelarReserva(id) {
-    if (confirm("¿Estás seguro de que deseas cancelar esta reserva? (US-26 / US-29)")) {
+    if (confirm("¿Estás seguro de que deseas cancelar esta reserva?")) {
         try {
-            const res = await fetch(`${API_URL}/reservas/${id}`, {
-                method: 'DELETE'
-            });
+            const res = await fetch(`${API_URL}/reservas/${id}`, { method: 'DELETE' });
             const result = await res.json();
             if (res.ok) {
                 alert("Reserva cancelada correctamente");
@@ -473,10 +486,15 @@ async function cancelarReserva(id) {
     }
 }
 
-function cerrarModal() { document.getElementById('modalMaestro').classList.add('hidden'); }
-function cerrarSesion() { sessionStorage.clear(); window.location.href = 'login.html'; }
-function recargarSeccionActual() { mostrarSeccion(seccionActual); }
+function cerrarModal() { 
+    const modal = document.getElementById('modalMaestro');
+    if (modal) modal.classList.add('hidden'); 
+}
 
+<<<<<<< HEAD:frontend/static/js/app.js
+function recargarSeccionActual() { 
+    mostrarSeccion(seccionActual); 
+=======
 async function initChart() {
     const user = JSON.parse(sessionStorage.getItem('user'));
     if (user.id_rol == 3) return; // Docente no tiene permisos del gráfico
@@ -552,4 +570,5 @@ async function initChart() {
     } catch (e) {
         console.error("Error al graficar reservas:", e);
     }
+>>>>>>> origin/main:frontend/static/js/dashboard.js
 }

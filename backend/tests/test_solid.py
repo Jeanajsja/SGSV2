@@ -3,6 +3,7 @@ import sys
 import unittest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from interfaces.email_validator import IEmailValidator
 from interfaces.password_hasher import IPasswordHasher

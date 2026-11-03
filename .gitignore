@@ -4,3 +4,8 @@ __pycache__/
 venv/
 .env
 *.log
+.vscode/
+.pytest_cache/
+.mypy_cache/
+coverage.xml
+htmlcov/

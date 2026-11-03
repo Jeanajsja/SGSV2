@@ -1,74 +1,47 @@
-from flask import Flask, request, Response
-import requests
+import os
+
+from flask import Flask, Response, request
+
+from shared.service_client import ServiceClient
+from shared.service_registry import MONOLITH_URL, resolve_target_base_url
 
 app = Flask(__name__)
 
-# =====================================================================
-# FEATURE TOGGLES (BRANCH BY ABSTRACTION / BLUE-GREEN DEPLOYMENT)
-# =====================================================================
-# True = GREEN (Nuevo Microservicio)
-# False = BLUE (Monolito Antiguo)
-TOGGLES = {
-    "auth": False,      # Monolito
-    "salones": False,   # Monolito
-    "docentes": False,  # Monolito
-    "reservas": True    # ¡NUEVO MICROSERVICIO ACTIVADO!
-}
+CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080").split(",") if origin.strip()]
 
-# =====================================================================
-# RUTAS DE LOS SERVICIOS
-# =====================================================================
-# El Monolito (BLUE) ahora debe correr en el puerto 5555
-MONOLITH_URL = "http://localhost:5555/api"
 
-# Microservicios (GREEN)
-MICROSERVICES = {
-    "auth": "http://localhost:5001/api",
-    "salones": "http://localhost:5002/api",
-    "docentes": "http://localhost:5003/api",
-    "reservas": "http://localhost:5004/api"
-}
+@app.after_request
+def add_security_headers(response):
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    origin = request.headers.get("Origin")
+    if origin in CORS_ALLOWED_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
 
-@app.route('/api/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE'])
+
+@app.route('/api/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 def proxy(path):
-    # Identificar el dominio según la primera parte de la URL
-    domain = path.split('/')[0]
-    
-    # Mapeo de rutas legacy al dominio 'auth'
-    if domain in ['login', 'usuarios', 'roles']: 
-        domain = 'auth'
+    if request.method == 'OPTIONS':
+        return Response(status=204)
 
-    # BRANCH BY ABSTRACTION: Decidir a dónde enviar el tráfico
-    use_new_service = TOGGLES.get(domain, False)
-    
-    if use_new_service:
-        target_base_url = MICROSERVICES.get(domain)
-        print(f"[GREEN] Enrutando '{domain}' al Microservicio -> {target_base_url}")
-    else:
-        target_base_url = MONOLITH_URL
-        print(f"[BLUE] Enrutando '{domain}' al Monolito -> {target_base_url}")
+    target_base_url = resolve_target_base_url(path)
 
-    if not target_base_url: 
+    if not target_base_url:
         return {"error": "Servicio no encontrado"}, 404
 
-    # Reconstruir la URL de destino
-    url = f"{target_base_url}/{path}"
-    
+    domain = path.split('/')[0]
+    client = ServiceClient(domain, timeout=10) if domain in {"login", "usuarios", "roles", "salones", "docentes", "reservas"} else ServiceClient("monolith", timeout=10)
     try:
-        # Enviar la petición interceptada al destino elegido (Blue o Green)
-        resp = requests.request(
-            method=request.method,
-            url=url,
-            headers={key: value for (key, value) in request.headers if key != 'Host'},
-            data=request.get_data(),
-            cookies=request.cookies,
-            allow_redirects=False
-        )
+        resp = client.proxy_request(request, path=path)
         return Response(resp.content, resp.status_code, resp.headers.items())
-    except requests.exceptions.ConnectionError:
-        return {"error": f"No se pudo conectar al servicio en {url}. ¿Está encendido?"}, 503
+    except Exception as exc:
+        return {"error": f"No se pudo conectar al servicio en {target_base_url}: {exc}"}, 503
+
 
 if __name__ == '__main__':
-    # El API Gateway SE APODERA del puerto 5000 (donde antes vivía el monolito)
-    print("Iniciando API Gateway (Branch by Abstraction) en el puerto 5000...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)), debug=False)
